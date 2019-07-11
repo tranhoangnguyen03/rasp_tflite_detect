@@ -3,7 +3,7 @@ import tensorflow as tf
 import cv2
 import os
 import time
-from multiprocessing import Process
+import sys
 from queue import Queue
 import threading
 
@@ -66,15 +66,15 @@ class ObjectDetectorLite(ObjectDetectorDetectionAPI):
         pass
 
 def process_frame(detector, inputQueue, outputQueue):
-	# keep looping
+    # keep looping
     while True:
         # check to see if there is a frame in our input queue
         if not inputQueue.empty():
             frame = inputQueue.get()
             result = detector.detect(frame, 0.5)
-			# write the detections to the output queue
+            # write the detections to the output queue
             outputQueue.put(result)
-
+			
 if __name__ == '__main__':
     frame_rate_calc = 1
     freq = cv2.getTickFrequency()
@@ -83,27 +83,28 @@ if __name__ == '__main__':
     detector = ObjectDetectorLite()
 
     os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
-	
-	# initialize the input queue (frames), output queue (detections),
+    
+    # initialize the input queue (frames), output queue (detections),
     # and the list of actual detections returned by the child process
     inputQueue = Queue(maxsize=1)
     outputQueue = Queue(maxsize=1)
     result = None
     print('Queue started')
-	
+    
     source = "rtmp://192.168.0.115/live"
     cap = VideoCaptureAsync(src=source)
     cap.start()
     time.sleep(2)
+    
 
     p = threading.Thread(target=process_frame, args=(detector, inputQueue,outputQueue,))
-    #p.daemon = True
+    p.daemon = True
     p.start()
     
     while True:
         t1 = cv2.getTickCount()
 
-        _, frame = cap.read()	
+        _, frame = cap.read()   
 
         if inputQueue.empty():  ## if queue is empty
             inputQueue.put(frame) ## pass frame onto inputQueue for proces_frame
@@ -132,14 +133,12 @@ if __name__ == '__main__':
              break
     cv2.destroyAllWindows()
     cap.stop()
-    inputQueue.task_done()
-    outputQueue.task_done()
-    p.join()
+    sys.exit()
 
 
 
 
-"""	
+""" 
     while(True):
         t1 = cv2.getTickCount()
 
